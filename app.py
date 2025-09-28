@@ -43,6 +43,28 @@ def save_chat_history(question, chat_history):
         st.error(f"Error saving history: {e}")
         return None
 
+def auto_save_current_chat():
+    """Automatically save current chat if it exists"""
+    if (len(st.session_state.chat_history) > 0 and 
+        not st.session_state.get("current_chat_saved", False)):
+        
+        # Get the first user question as the history name
+        first_question = None
+        for message in st.session_state.chat_history:
+            if message["role"] == "user":
+                first_question = message["content"]
+                break
+        
+        if first_question:
+            saved_file = save_chat_history(first_question, st.session_state.chat_history)
+            if saved_file:
+                # Mark current chat as saved
+                st.session_state.current_chat_saved = True
+                # Show notification
+                st.toast(f"💾 Previous chat auto-saved: {os.path.basename(saved_file)[:30]}...", icon="💾")
+                return True
+    return False
+
 def load_saved_histories():
     """Load all saved chat histories"""
     try:
@@ -74,6 +96,34 @@ def load_saved_histories():
     except Exception as e:
         st.error(f"Error loading histories: {e}")
         return []
+
+def update_history_name(filepath, new_name):
+    """Update the display name of a saved history"""
+    try:
+        # Read existing data
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Update display name
+        data["display_name"] = new_name
+        
+        # Save back to file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        
+        return True
+    except Exception as e:
+        st.error(f"Error updating history name: {e}")
+        return False
+
+def delete_history_file(filepath):
+    """Delete a saved history file"""
+    try:
+        os.remove(filepath)
+        return True
+    except Exception as e:
+        st.error(f"Error deleting history: {e}")
+        return False
 
 def main():
     st.set_page_config(
@@ -221,11 +271,37 @@ def main():
         
         if saved_histories:
             for i, history in enumerate(saved_histories[:10]):  # Show last 10
-                display_text = history["question"][:30] + "..." if len(history["question"]) > 30 else history["question"]
-                if st.button(f"📄 {display_text}", key=f"load_history_{i}"):
-                    st.session_state.chat_history = history["chat_history"]
-                    st.success("✅ History loaded!")
-                    st.rerun()
+                # Create a container for each history item
+                with st.container():
+                    # Create columns for buttons
+                    load_col, edit_col, delete_col = st.columns([4, 1, 1])
+                    
+                    with load_col:
+                        # Use display_name if available, otherwise use question
+                        display_name = history.get("display_name", history["question"])
+                        display_text = display_name[:32] + "..." if len(display_name) > 32 else display_name
+                        
+                        if st.button(f"📄 {display_text}", key=f"load_history_{i}", help=f"Load: {display_name}"):
+                            # Auto-save current chat before loading new one
+                            auto_save_current_chat()
+                            
+                            # Load selected history
+                            st.session_state.chat_history = history["chat_history"]
+                            st.session_state.current_query = ""
+                            st.session_state.current_chat_saved = True  # Mark as already saved
+                            st.success("✅ History loaded!")
+                            st.rerun()
+                    
+                    with edit_col:
+                        if st.button("✏️", key=f"edit_history_{i}", help="Edit name"):
+                            st.session_state[f"editing_history_{i}"] = True
+                            st.rerun()
+                    
+                    with delete_col:
+                        if st.button("🗑️", key=f"delete_history_{i}", help="Delete this history"):
+                            if delete_history_file(history["filepath"]):
+                                st.success("✅ Deleted!")
+                                st.rerun()
         else:
             st.markdown("""
             <div style="text-align: center; padding: 2rem; background: rgba(102, 126, 234, 0.1); border-radius: 12px; border: 2px dashed rgba(102, 126, 234, 0.3);">
@@ -235,22 +311,50 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
-    
+        
+        # Sample Questions Section
+        st.markdown('<div class="sidebar-section">', unsafe_allow_html=True)
+        st.subheader("💡 Sample Questions")
+        sample_questions = [
+            "How to implement pagination in Spring Boot?",
+            "Create a secure REST API with JWT authentication",
+            "How to use MapStruct for entity-DTO mapping?",
+            "Implement global exception handling in Spring Boot",
+            "Create a complete CRUD operation with security",
+            "How to implement audit trail in Spring Boot?",
+            "Best practices for Spring Boot validation"
+        ]
+        
+        for i, question in enumerate(sample_questions):
+            if st.button(f"💭 {question[:40]}{'...' if len(question) > 40 else ''}", key=f"sample_{i}"):
+                st.session_state.current_query = question
+                st.rerun()
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
     # Initialize session state
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+    if "selected_question" not in st.session_state:
+        st.session_state.selected_question = ""
     if "copied_code" not in st.session_state:
         st.session_state.copied_code = {}
     if "current_query" not in st.session_state:
         st.session_state.current_query = ""
-    
-    # Initialize chatbot
+    if "current_chat_saved" not in st.session_state:
+        st.session_state.current_chat_saved = False
+
+    # Initialize the chatbot (streaming mode always enabled)
     try:
-        import os
-        from dotenv import load_dotenv
-        load_dotenv()
-        api_key = os.getenv("GROQ_API_KEY")
-        
+        # Try to get API key from secrets first, then from environment
+        try:
+            api_key = st.secrets["GROQ_API_KEY"]
+        except:
+            import os
+            from dotenv import load_dotenv
+            load_dotenv()
+            api_key = os.getenv("GROQ_API_KEY")
+            
         if not api_key:
             raise Exception("API key not found")
             
@@ -477,6 +581,30 @@ def main():
                     st.markdown(response_content)
                 
                 st.markdown("---")
+
+    # Modern Footer with Enhanced Styling
+    st.markdown("""
+    <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light);">
+        <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 2rem; margin-bottom: 1rem;">
+            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); text-align: center; min-width: 150px;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</div>
+                <div style="font-weight: 600; color: var(--primary-color);">Enterprise Ready</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); text-align: center; min-width: 150px;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔒</div>
+                <div style="font-weight: 600; color: var(--primary-color);">Security First</div>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); text-align: center; min-width: 150px;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🚀</div>
+                <div style="font-weight: 600; color: var(--primary-color);">Production Ready</div>
+            </div>
+        </div>
+        <div style="background: var(--primary-gradient); padding: 1rem; border-radius: 12px; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
+            <p style="margin: 0; font-weight: 600; font-size: 1.1rem;">🎯 Enterprise Java Development Assistant</p>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Powered by Groq API | Advanced AI | Modern UI</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
