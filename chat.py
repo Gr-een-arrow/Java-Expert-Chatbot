@@ -136,6 +136,97 @@ class JavaChatbot:
         except Exception as e:
             return f"I apologize, but I encountered an error: {str(e)}. Please try rephrasing your question."
 
+class GroqJavaChatbot:
+    """Enhanced implementation with streaming support"""
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.groq.com/openai/v1/chat/completions"
+        
+    def stream_response(self, user_query: str, print_to_terminal: bool = True, streamlit_container=None):
+        """Stream response from API with enhanced system prompt"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        enhanced_system_prompt = """
+        You are a highly skilled Java and Spring Boot mentor.
+        Your task is to generate clear, structured, and enterprise-grade explanations 
+        for any question about Java, Core Java, or Spring Boot.
+
+        Follow this response structure:
+        1. Concept Explanation - Simple, beginner-friendly terms
+        2. Security Considerations - Enterprise security practices  
+        3. Code Example - Complete, runnable examples with proper structure
+        4. Best Practices - Modern Java/Spring Boot recommendations
+        5. Common Mistakes - What to avoid and why
+        
+        Requirements:
+        - Always prioritize security best practices
+        - Use proper MVC architecture separation
+        - Provide complete, production-ready code
+        - Include proper error handling
+        - Follow enterprise coding standards
+        - Never truncate responses, always provide complete implementations
+        """
+
+        payload = {
+            "model": "moonshotai/kimi-k2-instruct",
+            "messages": [
+                {"role": "system", "content": enhanced_system_prompt},
+                {"role": "user", "content": user_query}
+            ],
+            "max_tokens": 4000,
+            "temperature": 0.1,
+            "stream": True
+        }
+        
+        try:
+            response = requests.post(
+                self.base_url,
+                headers=headers,
+                json=payload,
+                stream=True,
+                timeout=45
+            )
+            
+            if response.status_code == 200:
+                full_response = ""
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data = line[6:]
+                            if data.strip() == '[DONE]':
+                                break
+                            try:
+                                json_data = json.loads(data)
+                                if 'choices' in json_data and len(json_data['choices']) > 0:
+                                    delta = json_data['choices'][0].get('delta', {})
+                                    if 'content' in delta:
+                                        content = delta['content']
+                                        if print_to_terminal:
+                                            print(content, end='', flush=True)
+                                        
+                                        full_response += content
+                                        
+                                        # Streamlit UI streaming
+                                        if streamlit_container:
+                                            streamlit_container.markdown(full_response)
+                                        
+                            except json.JSONDecodeError:
+                                continue
+                
+                return full_response
+            else:
+                error_msg = f"API Error: {response.status_code} - {response.text}"
+                return error_msg
+                 
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            return error_msg
+
 def load_api_key():
     """Load API key from environment variables"""
     load_dotenv()

@@ -3,7 +3,13 @@ import re
 import json
 import os
 from datetime import datetime
-from chat import JavaChatbot
+from chat import JavaChatbot, GroqJavaChatbot
+
+def extract_code_blocks(response):
+    """Extract code blocks from the response"""
+    code_pattern = r'```(\w+)?\n(.*?)```'
+    code_blocks = re.findall(code_pattern, response, re.DOTALL)
+    return code_blocks
 
 def save_chat_history(question, chat_history):
     """Save chat history to a JSON file"""
@@ -23,6 +29,7 @@ def save_chat_history(question, chat_history):
         # Prepare data to save
         save_data = {
             "question": question,
+            "display_name": question,  # Add display_name field
             "timestamp": datetime.now().isoformat(),
             "chat_history": chat_history
         }
@@ -52,7 +59,9 @@ def load_saved_histories():
                         data = json.load(f)
                         histories.append({
                             "filename": filename,
+                            "filepath": filepath,
                             "question": data.get("question", "Unknown Question"),
+                            "display_name": data.get("display_name", data.get("question", "Unknown Question")),
                             "timestamp": data.get("timestamp", ""),
                             "chat_history": data.get("chat_history", [])
                         })
@@ -230,6 +239,10 @@ def main():
     # Initialize session state
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
+    if "copied_code" not in st.session_state:
+        st.session_state.copied_code = {}
+    if "current_query" not in st.session_state:
+        st.session_state.current_query = ""
     
     # Initialize chatbot
     try:
@@ -239,12 +252,11 @@ def main():
         api_key = os.getenv("GROQ_API_KEY")
         
         if not api_key:
-            st.error("❌ API key not found. Please configure GROQ_API_KEY in .env file.")
-            st.stop()
+            raise Exception("API key not found")
             
-        chatbot = JavaChatbot(api_key)
+        chatbot = GroqJavaChatbot(api_key)
     except Exception as e:
-        st.error(f"❌ Error initializing chatbot: {e}")
+        st.error("❌ API key not found. Please configure GROQ_API_KEY in Streamlit secrets or .env file.")
         st.stop()
     
     # Enhanced User Input Section
@@ -266,10 +278,16 @@ def main():
     with col1:
         user_query = st.text_area(
             "Your Question:",
+            value=st.session_state.current_query,
             height=120,
             placeholder="🚀 Example: How to implement JWT authentication in Spring Boot?\n💡 Or: Best practices for RESTful API design?\n🔒 Or: How to secure a Spring Boot application?",
+            key="user_input",
             label_visibility="collapsed"
         )
+        
+        # Update current_query when user types
+        if user_query != st.session_state.current_query:
+            st.session_state.current_query = user_query
     
     with col2:
         st.markdown("""
@@ -294,24 +312,82 @@ def main():
                                    disabled=len(st.session_state.chat_history) == 0)
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Handle buttons
-    if ask_button:
-        if user_query.strip():
-            # Add user message
-            st.session_state.chat_history.append({"role": "user", "content": user_query})
+    # Process user query
+    if ask_button and st.session_state.current_query.strip():
+        # Add user message to history
+        st.session_state.chat_history.append({"role": "user", "content": st.session_state.current_query})
+        
+        # Show streaming response in real-time
+        st.markdown("---")
+        st.markdown(f"""
+        <div class="user-message">
+            <strong>👤 You:</strong><br>
+            {st.session_state.current_query}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="response-container">
+            <strong>🤖 Java Expert:</strong>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Create streaming container
+        streaming_container = st.empty()
+        
+        # Show progress
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        # Custom streaming function with progress
+        def stream_with_progress():
+            status_text.text("🔍 Analyzing your question...")
+            progress_bar.progress(25)
             
-            # Get bot response
-            with st.spinner("Generating response..."):
-                response = chatbot.get_response(user_query)
+            status_text.text("🧠 Generating solution...")
+            progress_bar.progress(50)
             
-            # Add bot response
-            st.session_state.chat_history.append({"role": "assistant", "content": response})
-        else:
-            st.warning("Please enter a question.")
+            status_text.text("📝 Creating examples...")
+            progress_bar.progress(75)
+            
+            # Get the actual response
+            response = chatbot.stream_response(
+                st.session_state.current_query, 
+                print_to_terminal=True,
+                streamlit_container=streaming_container
+            )
+            
+            progress_bar.progress(100)
+            status_text.text("✅ Response completed!")
+            
+            # Clean up progress indicators
+            import time
+            time.sleep(1)
+            progress_bar.empty()
+            status_text.empty()
+            
+            return response
+        
+        # Get streaming response
+        response = stream_with_progress()
+        
+        # Add bot response to history
+        st.session_state.chat_history.append({"role": "assistant", "content": response})
+        
+        # Clear the current query after processing
+        st.session_state.current_query = ""
+        
+        # Rerun to show the new response in proper format
+        st.rerun()
+    
+    elif ask_button and not st.session_state.current_query.strip():
+        st.warning("⚠️ Please enter a question.")
     
     # Clear chat history
     if clear_button:
         st.session_state.chat_history = []
+        st.session_state.copied_code = {}
+        st.session_state.current_query = ""
         st.rerun()
     
     # Save chat history
@@ -343,7 +419,7 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        for message in st.session_state.chat_history:
+        for i, message in enumerate(st.session_state.chat_history):
             if message["role"] == "user":
                 st.markdown(f"""
                 <div class="user-message">
@@ -351,13 +427,55 @@ def main():
                     {message["content"]}
                 </div>
                 """, unsafe_allow_html=True)
-            else:
+            
+            else:  # assistant
                 st.markdown("""
                 <div class="response-container">
                     <strong>🤖 Java Expert:</strong>
                 </div>
                 """, unsafe_allow_html=True)
-                st.markdown(message["content"])
+                
+                # Display the response with code highlighting
+                response_content = message["content"]
+                
+                # Extract and display code blocks separately for copy functionality
+                code_blocks = extract_code_blocks(response_content)
+                
+                if code_blocks:
+                    # Display response without code blocks first
+                    text_without_code = re.sub(r'```(\w+)?\n(.*?)```', '\n[CODE BLOCK BELOW]\n', response_content, flags=re.DOTALL)
+                    st.markdown(text_without_code)
+                    
+                    # Display each code block with copy functionality
+                    for j, (language, code) in enumerate(code_blocks):
+                        st.subheader(f"📄 Code Example {j+1}" + (f" ({language})" if language else ""))
+                        
+                        # Create columns for code and copy button
+                        code_col, copy_col = st.columns([10, 1])
+                        
+                        with code_col:
+                            st.code(code, language=language if language else 'java')
+                        
+                        with copy_col:
+                            copy_key = f"copy_{i}_{j}"
+                            if st.button("📋", key=copy_key, help="Copy code"):
+                                # Store the code in session state for copying
+                                st.session_state.copied_code[copy_key] = code
+                                st.success("✅ Copied!")
+                                
+                                # JavaScript to copy to clipboard
+                                code_json = json.dumps(code)
+                                st.components.v1.html(f"""
+                                <script>
+                                    navigator.clipboard.writeText({code_json}).then(function() {{
+                                        console.log('Code copied to clipboard');
+                                    }});
+                                </script>
+                                """, height=0)
+                else:
+                    # No code blocks, display normally
+                    st.markdown(response_content)
+                
                 st.markdown("---")
 
 if __name__ == "__main__":
