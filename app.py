@@ -3,7 +3,7 @@ import re
 import json
 import os
 from datetime import datetime
-from chat import JavaChatbot, GroqJavaChatbot
+from chat import GroqJavaChatbot
 
 def extract_code_blocks(response):
     """Extract code blocks from the response"""
@@ -29,7 +29,7 @@ def save_chat_history(question, chat_history):
         # Prepare data to save
         save_data = {
             "question": question,
-            "display_name": question,  # Add display_name field
+            "display_name": question,  # Add display_name field (same as question initially)
             "timestamp": datetime.now().isoformat(),
             "chat_history": chat_history
         }
@@ -142,10 +142,12 @@ def main():
         --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
         --glass-bg: rgba(255, 255, 255, 0.1);
         --glass-border: rgba(255, 255, 255, 0.2);
         --shadow-light: 0 8px 32px rgba(102, 126, 234, 0.1);
         --shadow-medium: 0 8px 32px rgba(102, 126, 234, 0.2);
+        --shadow-heavy: 0 16px 48px rgba(102, 126, 234, 0.3);
         --border-radius: 16px;
         --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -156,17 +158,40 @@ def main():
         min-height: 100vh;
     }
 
+    /* Sidebar Modern Styling */
+    .css-1d391kg, .css-1cypcdb {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-right: 1px solid var(--glass-border);
+    }
+
     /* Header with Glass Morphism */
     .main-header {
         background: var(--primary-gradient);
         padding: 2rem;
         border-radius: var(--border-radius);
         margin-bottom: 2rem;
-        box-shadow: var(--shadow-medium);
+        box-shadow: var(--shadow-heavy);
         backdrop-filter: blur(20px);
         border: 1px solid var(--glass-border);
         position: relative;
         overflow: hidden;
+    }
+
+    .main-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: shimmer 3s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(180deg); }
     }
 
     .main-header h1 {
@@ -176,6 +201,70 @@ def main():
         font-weight: 700;
         font-size: 2.5rem;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 1;
+    }
+
+    .main-header p {
+        position: relative;
+        z-index: 1;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+
+    /* Response Container with Glass Effect */
+    .response-container {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        padding: 2rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--glass-border);
+        margin: 1.5rem 0;
+        box-shadow: var(--shadow-medium);
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition);
+    }
+
+    .response-container:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-heavy);
+    }
+
+    .response-container::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 4px;
+        background: var(--primary-gradient);
+        border-radius: 0 4px 4px 0;
+    }
+
+    /* User Message Styling */
+    .user-message {
+        background: var(--success-gradient);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        margin: 1.5rem 0;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--glass-border);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .user-message strong {
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+
+    /* Code Block Modern Styling */
+    .stCodeBlock {
+        background: var(--dark-gradient) !important;
+        border-radius: var(--border-radius) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: var(--shadow-medium) !important;
+        margin: 1rem 0 !important;
     }
 
     /* Button Styling */
@@ -188,11 +277,26 @@ def main():
         font-weight: 600;
         box-shadow: var(--shadow-light);
         transition: var(--transition);
+        position: relative;
+        overflow: hidden;
     }
 
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: var(--shadow-medium);
+        box-shadow: var(--shadow-heavy);
+    }
+
+    .stButton > button:active {
+        transform: translateY(0);
+    }
+
+    /* Special Button Types */
+    .stButton > button[data-testid*="clear"] {
+        background: var(--secondary-gradient);
+    }
+
+    .stButton > button[data-testid*="save"] {
+        background: var(--success-gradient);
     }
 
     /* Input Styling */
@@ -203,6 +307,17 @@ def main():
         border-radius: var(--border-radius);
         padding: 1rem;
         transition: var(--transition);
+    }
+
+    .stTextArea textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* Progress Bar Styling */
+    .stProgress .st-bo {
+        background: var(--primary-gradient);
+        border-radius: 10px;
     }
 
     /* Sidebar Elements */
@@ -216,30 +331,156 @@ def main():
         box-shadow: var(--shadow-light);
     }
 
-    /* User Message Styling */
-    .user-message {
-        background: var(--success-gradient);
-        padding: 1.5rem;
-        border-radius: var(--border-radius);
-        margin: 1.5rem 0;
-        box-shadow: var(--shadow-light);
+    /* History Item Styling */
+    .history-item {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 0.75rem;
         border: 1px solid var(--glass-border);
+        box-shadow: var(--shadow-light);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
     }
 
-    .user-message strong {
+    .history-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 3px;
+        background: var(--primary-gradient);
+        border-radius: 0 3px 3px 0;
+    }
+
+    .history-item:hover {
+        transform: translateX(5px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    /* Toast/Alert Styling */
+    .stAlert {
+        border-radius: var(--border-radius);
+        border: none;
+        box-shadow: var(--shadow-light);
+    }
+
+    /* Success Messages */
+    .stSuccess {
+        background: var(--success-gradient);
         color: white;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
     }
 
-    /* Response Container */
-    .response-container {
+    /* Warning Messages */
+    .stWarning {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: #8b4513;
+    }
+
+    /* Error Messages */
+    .stError {
+        background: var(--secondary-gradient);
+        color: white;
+    }
+
+    /* Footer Styling */
+    .footer {
+        text-align: center;
+        margin-top: 3rem;
+        padding: 2rem;
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(20px);
-        padding: 2rem;
         border-radius: var(--border-radius);
         border: 1px solid var(--glass-border);
-        margin: 1.5rem 0;
+        box-shadow: var(--shadow-light);
+    }
+
+    /* Metrics and Stats */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(20px);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--shadow-light);
+        text-align: center;
+        transition: var(--transition);
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-heavy);
+    }
+
+    /* Copy Button Enhancement */
+    .copy-button-modern {
+        background: var(--primary-gradient);
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        color: white;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: var(--shadow-light);
+    }
+
+    .copy-button-modern:hover {
+        transform: scale(1.05);
         box-shadow: var(--shadow-medium);
+    }
+
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary-gradient);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary-gradient);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .main-header h1 {
+            font-size: 2rem;
+        }
+        
+        .response-container, .user-message {
+            padding: 1rem;
+        }
+    }
+
+    /* Loading Animation */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    .loading {
+        animation: pulse 2s infinite;
+    }
+
+    /* Floating Action Style */
+    .floating-element {
+        position: relative;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
     }
     </style>
     """, unsafe_allow_html=True)
@@ -249,7 +490,7 @@ def main():
     <div class="main-header">
         <h1>☕ Java Expert Chatbot - Enterprise Ready</h1>
         <p style="color: white; text-align: center; margin: 0;">
-            🔒 Security-First | 🏗️ MVC Architecture | 🚀 Production Ready
+            🔒 Security-First | 🏗️ MVC Architecture | 🚀 Production Ready | 💾 Auto-Save
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -302,6 +543,45 @@ def main():
                             if delete_history_file(history["filepath"]):
                                 st.success("✅ Deleted!")
                                 st.rerun()
+                    
+                    # Edit mode for this history item
+                    if st.session_state.get(f"editing_history_{i}", False):
+                        st.markdown("**✏️ Edit History Name:**")
+                        
+                        # Create columns for edit input and buttons
+                        input_col, save_col, cancel_col = st.columns([6, 1, 1])
+                        
+                        with input_col:
+                            current_name = history.get("display_name", history["question"])
+                            new_name = st.text_input(
+                                "New name:",
+                                value=current_name,
+                                key=f"edit_input_{i}",
+                                label_visibility="collapsed"
+                            )
+                        
+                        with save_col:
+                            if st.button("💾", key=f"save_edit_{i}", help="Save changes"):
+                                if new_name.strip():
+                                    if update_history_name(history["filepath"], new_name.strip()):
+                                        st.session_state[f"editing_history_{i}"] = False
+                                        st.success("✅ Name updated!")
+                                        st.rerun()
+                                    else:
+                                        st.error("❌ Failed to update name")
+                                else:
+                                    st.warning("⚠️ Name cannot be empty")
+                        
+                        with cancel_col:
+                            if st.button("❌", key=f"cancel_edit_{i}", help="Cancel editing"):
+                                st.session_state[f"editing_history_{i}"] = False
+                                st.rerun()
+                        
+                        st.markdown("---")
+                
+                # Add separator between items (only if not editing)
+                if not st.session_state.get(f"editing_history_{i}", False):
+                    st.markdown("")
         else:
             st.markdown("""
             <div style="text-align: center; padding: 2rem; background: rgba(102, 126, 234, 0.1); border-radius: 12px; border: 2px dashed rgba(102, 126, 234, 0.3);">
@@ -326,9 +606,19 @@ def main():
         ]
         
         for i, question in enumerate(sample_questions):
-            if st.button(f"💭 {question[:40]}{'...' if len(question) > 40 else ''}", key=f"sample_{i}"):
-                st.session_state.current_query = question
-                st.rerun()
+            # Create a custom styled button for each sample question
+            st.markdown(f"""
+            <div class="history-item" style="cursor: pointer; transition: var(--transition);" 
+                 onmouseover="this.style.transform='translateX(8px) scale(1.02)'" 
+                 onmouseout="this.style.transform='translateX(0) scale(1)'">
+                <div style="font-weight: 600; color: var(--primary-color); margin-bottom: 0.25rem;">
+                    💭 Sample #{i+1}
+                </div>
+                <div style="font-size: 0.9rem; line-height: 1.4;">
+                    {question}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -362,7 +652,20 @@ def main():
     except Exception as e:
         st.error("❌ API key not found. Please configure GROQ_API_KEY in Streamlit secrets or .env file.")
         st.stop()
-    
+
+    # Handle selected question from sidebar
+    if st.session_state.selected_question:
+        # Auto-save current chat before switching to new question
+        if st.session_state.chat_history and not st.session_state.current_chat_saved:
+            auto_save_current_chat()
+        
+        # Clear current chat and set new question
+        st.session_state.chat_history = []
+        st.session_state.current_query = st.session_state.selected_question
+        st.session_state.selected_question = ""
+        st.session_state.current_chat_saved = False
+        st.session_state.copied_code = {}
+
     # Enhanced User Input Section
     st.markdown("""
     <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); 
@@ -405,26 +708,71 @@ def main():
         """, unsafe_allow_html=True)
         
         st.write("")  # Spacing
-        ask_button = st.button("🚀 Ask Expert", type="primary", use_container_width=True)
+        submit_button = st.button("🚀 Ask Expert", type="primary", use_container_width=True)
         
+        # Action buttons with enhanced styling
         st.markdown('<div style="margin-top: 1rem;">', unsafe_allow_html=True)
         col2a, col2b = st.columns(2)
         with col2a:
-            clear_button = st.button("🗑️ Clear", use_container_width=True)
+            clear_button = st.button("🗑️ Clear", use_container_width=True, help="Clear current conversation")
         with col2b:
+            # Manual save button (optional now)
             save_button = st.button("💾 Save", use_container_width=True, 
-                                   disabled=len(st.session_state.chat_history) == 0)
+                                   disabled=len(st.session_state.chat_history) == 0 or st.session_state.current_chat_saved,
+                                   help="Save current conversation")
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # Manual save chat history
+    if save_button and st.session_state.chat_history and not st.session_state.current_chat_saved:
+        # Get the first user question as the history name
+        first_question = None
+        for message in st.session_state.chat_history:
+            if message["role"] == "user":
+                first_question = message["content"]
+                break
+        
+        if first_question:
+            saved_file = save_chat_history(first_question, st.session_state.chat_history)
+            if saved_file:
+                st.session_state.current_chat_saved = True
+                st.success(f"✅ History saved as: {os.path.basename(saved_file)}")
+                st.rerun()
+        else:
+            st.warning("⚠️ No questions found in chat history.")
+    
+    # Clear chat history
+    if clear_button:
+        # Auto-save before clearing
+        auto_save_current_chat()
+        
+        # Clear everything
+        st.session_state.chat_history = []
+        st.session_state.copied_code = {}
+        st.session_state.current_query = ""
+        st.session_state.current_chat_saved = False
+        st.rerun()
+    
     # Process user query
-    if ask_button and st.session_state.current_query.strip():
+    if submit_button and st.session_state.current_query.strip():
+        # Check if this is a new question when there's already a chat history
+        if (len(st.session_state.chat_history) > 0 and 
+            not st.session_state.current_chat_saved and
+            st.session_state.current_query not in [msg["content"] for msg in st.session_state.chat_history if msg["role"] == "user"]):
+            
+            # Auto-save current chat before starting new question
+            auto_save_current_chat()
+            
+            # Clear chat for new question
+            st.session_state.chat_history = []
+            st.session_state.current_chat_saved = False
+        
         # Add user message to history
         st.session_state.chat_history.append({"role": "user", "content": st.session_state.current_query})
         
         # Show streaming response in real-time
         st.markdown("---")
         st.markdown(f"""
-        <div class="user-message">
+        <div class="user-message floating-element">
             <strong>👤 You:</strong><br>
             {st.session_state.current_query}
         </div>
@@ -439,20 +787,36 @@ def main():
         # Create streaming container
         streaming_container = st.empty()
         
-        # Show progress
+        # Show modern progress with enhanced styling
+        progress_container = st.container()
+        with progress_container:
+            st.markdown("""
+            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); 
+                        padding: 1.5rem; border-radius: var(--border-radius); 
+                        border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); margin: 1rem 0;">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;" class="loading">🤖</div>
+                    <div style="font-weight: 600; color: var(--primary-color);" id="status-text">Initializing AI...</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         # Custom streaming function with progress
         def stream_with_progress():
             status_text.text("🔍 Analyzing your question...")
-            progress_bar.progress(25)
+            progress_bar.progress(10)
             
-            status_text.text("🧠 Generating solution...")
+            status_text.text("🧠 Generating enterprise-grade solution...")
+            progress_bar.progress(30)
+            
+            status_text.text("🔒 Adding security best practices...")
             progress_bar.progress(50)
             
-            status_text.text("📝 Creating examples...")
-            progress_bar.progress(75)
+            status_text.text("📝 Creating complete code examples...")
+            progress_bar.progress(70)
             
             # Get the actual response
             response = chatbot.stream_response(
@@ -464,7 +828,7 @@ def main():
             progress_bar.progress(100)
             status_text.text("✅ Response completed!")
             
-            # Clean up progress indicators
+            # Clean up progress indicators after a short delay
             import time
             time.sleep(1)
             progress_bar.empty()
@@ -484,41 +848,28 @@ def main():
         # Rerun to show the new response in proper format
         st.rerun()
     
-    elif ask_button and not st.session_state.current_query.strip():
+    elif submit_button and not st.session_state.current_query.strip():
         st.warning("⚠️ Please enter a question.")
-    
-    # Clear chat history
-    if clear_button:
-        st.session_state.chat_history = []
-        st.session_state.copied_code = {}
-        st.session_state.current_query = ""
-        st.rerun()
-    
-    # Save chat history
-    if save_button and st.session_state.chat_history:
-        # Get the first user question as the history name
-        first_question = None
-        for message in st.session_state.chat_history:
-            if message["role"] == "user":
-                first_question = message["content"]
-                break
-        
-        if first_question:
-            saved_file = save_chat_history(first_question, st.session_state.chat_history)
-            if saved_file:
-                st.success(f"✅ History saved!")
-                st.rerun()
-        else:
-            st.warning("⚠️ No questions found in chat history.")
-    
+
     # Display chat history with enhanced styling
     if st.session_state.chat_history:
-        st.markdown("""
-        <div style="background: var(--success-gradient); padding: 1rem 1.5rem; border-radius: var(--border-radius); 
+        # Show save status with modern design
+        save_status_icon = "💾" if st.session_state.current_chat_saved else "⚠️"
+        save_status_text = "Auto-saved" if st.session_state.current_chat_saved else "Not saved"
+        save_status_color = "var(--success-gradient)" if st.session_state.current_chat_saved else "var(--secondary-gradient)"
+        
+        st.markdown(f"""
+        <div style="background: {save_status_color}; padding: 1rem 1.5rem; border-radius: var(--border-radius); 
                     margin: 2rem 0 1rem 0; color: white; box-shadow: var(--shadow-light);">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="font-size: 1.5rem;">💬</span>
-                <span style="font-weight: 700; font-size: 1.2rem;">Chat History</span>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.5rem;">{save_status_icon}</span>
+                    <span style="font-weight: 700; font-size: 1.2rem;">💬 Chat History</span>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.2); padding: 0.5rem 1rem; 
+                           border-radius: 20px; font-size: 0.9rem; font-weight: 600;">
+                    {save_status_text}
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -584,19 +935,23 @@ def main():
 
     # Modern Footer with Enhanced Styling
     st.markdown("""
-    <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light);">
+    <div class="footer floating-element">
         <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 2rem; margin-bottom: 1rem;">
-            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); text-align: center; min-width: 150px;">
+            <div class="metric-card" style="min-width: 150px;">
                 <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</div>
                 <div style="font-weight: 600; color: var(--primary-color);">Enterprise Ready</div>
             </div>
-            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); text-align: center; min-width: 150px;">
+            <div class="metric-card" style="min-width: 150px;">
                 <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔒</div>
                 <div style="font-weight: 600; color: var(--primary-color);">Security First</div>
             </div>
-            <div style="background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); padding: 1.5rem; border-radius: var(--border-radius); border: 1px solid var(--glass-border); box-shadow: var(--shadow-light); text-align: center; min-width: 150px;">
+            <div class="metric-card" style="min-width: 150px;">
                 <div style="font-size: 2rem; margin-bottom: 0.5rem;">🚀</div>
                 <div style="font-weight: 600; color: var(--primary-color);">Production Ready</div>
+            </div>
+            <div class="metric-card" style="min-width: 150px;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">💾</div>
+                <div style="font-weight: 600; color: var(--primary-color);">Auto-Save</div>
             </div>
         </div>
         <div style="background: var(--primary-gradient); padding: 1rem; border-radius: 12px; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);">
