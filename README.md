@@ -12,12 +12,11 @@ A sophisticated, AI-powered Java and Spring Boot learning assistant that provide
 
 Experience the Java Expert Chatbot in action:
 
-<video width="800" controls>
-  <source src="demo/java-expert-chatbot-demo.mp4" type="video/mp4">
-  <img src="demo/thumbnail.png" alt="Java Expert Chatbot Demo Thumbnail" width="800">
-  Your browser does not support the video tag. 
-  <a href="demo/java-expert-chatbot-demo.mp4">Download the demo video</a>
-</video>
+[![Java Expert Chatbot Demo](demo/thumbnail.png)](demo/java-expert-chatbot-demo.mp4)
+
+**[▶️ Watch Demo Video](demo/java-expert-chatbot-demo.mp4)**
+
+> *Click the thumbnail above or the link to view the demo video*
 
 **What you'll see:**
 - 🚀 Real-time AI responses with streaming
